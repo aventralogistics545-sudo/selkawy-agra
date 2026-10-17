@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f766e">
+<title>سلكاوي أجرة | تقدير أجرة المشوار</title>
+<style>
+:root{--teal:#0f766e;--dark:#134e4a;--bg:#f3f7f7;--ink:#172b2a;--muted:#627472;--line:#cbd8d6}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(135deg,var(--dark),var(--teal));color:white;padding:28px 18px 34px;text-align:center}
+.logo{font-size:34px;margin-bottom:6px}h1{margin:0;font-size:27px}header p{margin:9px 0 0;opacity:.92}
+main{max-width:620px;margin:-16px auto 30px;padding:0 14px}
+.card{background:#fff;border-radius:18px;padding:20px;box-shadow:0 8px 28px #153f3c12;margin-bottom:14px}
+label{display:block;font-weight:700;margin:12px 0 7px}
+input,select{width:100%;font:inherit;border:1px solid var(--line);border-radius:11px;padding:13px;background:white;color:var(--ink)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{width:100%;border:0;border-radius:12px;background:var(--teal);color:white;font:inherit;font-weight:800;padding:14px;margin-top:14px;cursor:pointer}
+button.secondary{background:#e7f3f1;color:var(--dark);border:1px solid #b8dcd6}
+button:disabled{opacity:.55;cursor:wait}
+.result{display:none;text-align:center;background:#e7f6f2;border:1px solid #b8e4d9;border-radius:15px;padding:18px;margin-top:16px}
+.price{font-size:34px;font-weight:900;color:var(--dark);margin:4px}
+.small{font-size:13px;color:var(--muted);line-height:1.7}
+h2{font-size:18px;margin:0 0 8px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.chip{background:#edf5f4;padding:7px 10px;border-radius:999px;font-size:13px}
+#status{margin-top:12px;font-size:14px;line-height:1.7}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:4px 18px 28px}
+a{color:var(--teal);font-weight:800}
+@media(max-width:420px){.grid{grid-template-columns:1fr}header{padding-top:22px}h1{font-size:24px}}
+</style>
+</head>
+<body>
+<header><div class="logo">🚕</div><h1>سلكاوي أجرة</h1><p>اعرف أجرة مشوارك التقريبية في القاهرة والجيزة</p></header>
+<main>
+<section class="card">
+<h2>احسب أجرة المشوار</h2>
+<p class="small">اكتب مكان البداية والنهاية، واضغط «احسب المسافة تلقائيًا». نستخدم خدمة خرائط مفتوحة لتقدير المسار بالسيارة.</p>
+<label for="from">من</label><input id="from" autocomplete="street-address" placeholder="مثال: محطة مترو عين شمس، القاهرة">
+<label for="to">إلى</label><input id="to" autocomplete="street-address" placeholder="مثال: ميدان التحرير، القاهرة">
+<button id="routeBtn" class="secondary">📍 احسب المسافة تلقائيًا</button>
+<div id="status" class="small" aria-live="polite">اكتب العنوانين بالتفصيل، ويفضل إضافة اسم المنطقة أو المدينة.</div>
+<div class="grid">
+<div><label for="km">المسافة (كم)</label><input id="km" type="number" min="0.1" step="0.1" placeholder="ستظهر تلقائيًا" readonly></div>
+<div><label for="traffic">حالة الطريق</label><select id="traffic"><option value="1">عادي</option><option value="1.15">زحمة متوسطة</option><option value="1.3">زحمة شديدة</option></select></div>
+</div>
+<label for="ride">نوع المشوار</label><select id="ride"><option value="1">تاكسي / أجرة عادية</option><option value="1.25">سيارة مريحة</option></select>
+<button id="calc">احسب الأجرة التقريبية</button>
+<div class="result" id="result" aria-live="polite"><div>الأجرة التقديرية</div><div class="price" id="price">—</div><div id="range"></div><div class="chips"><span class="chip" id="distance"></span><span class="chip" id="duration"></span></div></div>
+</section>
+<section class="card"><h2>ملاحظات مهمة</h2>
+<p class="small">المسافة تُحسب من طريق قيادة مقترح، وليست خطًا مستقيمًا. قد لا تتعرف الخدمة على بعض العناوين؛ جرّب إضافة اسم الحي والمدينة.</p>
+<p class="small"><strong>تنبيه:</strong> حساب الأجرة تجريبي وليس تعريفة رسمية. الأرقام تحتاج مراجعة قبل الإطلاق التجاري. خدمات الخرائط المفتوحة المستخدمة هنا تجريبية ولها حدود استخدام، ولا تناسب الضغط العالي أو الاعتماد التجاري دون إعداد خدمة موثوقة.</p>
+<a href="https://maps.google.com" target="_blank" rel="noopener">افتح خرائط Google ↗</a>
+</section></main>
+<footer>سلكاوي أجرة · نسخة تجريبية أولية</footer>
+<script>
+const $=id=>document.getElementById(id);
+let routeKm=null, routeMinutes=null;
+async function geocode(query){
+ const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=eg&q='+encodeURIComponent(query);
+ const response=await fetch(url,{headers:{'Accept-Language':'ar'}});
+ if(!response.ok) throw new Error('خدمة البحث عن الأماكن غير متاحة حاليًا.');
+ const data=await response.json();
+ if(!data.length) throw new Error('لم نتمكن من العثور على: '+query+' . أضف اسم الحي والمدينة.');
+ return {lat:data[0].lat,lon:data[0].lon,label:data[0].display_name};
+}
+$('routeBtn').addEventListener('click',async()=>{
+ const from=$('from').value.trim(),to=$('to').value.trim();
+ if(!from||!to){$('status').textContent='اكتب مكان البداية والنهاية أولًا.';return;}
+ $('routeBtn').disabled=true;$('routeBtn').textContent='جارٍ تحديد الطريق…';$('status').textContent='بنبحث عن المكانين ونحسب طريق القيادة. قد يستغرق ذلك عدة ثوانٍ.';
+ $('result').style.display='none';
+ try{
+  const a=await geocode(from); const b=await geocode(to);
+  const url=`https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`;
+  const response=await fetch(url); if(!response.ok) throw new Error('تعذر حساب مسار القيادة الآن.');
+  const data=await response.json(); if(data.code!=='Ok'||!data.routes?.length) throw new Error('لم نعثر على طريق قيادة بين المكانين.');
+  const route=data.routes[0]; routeKm=Math.round(route.distance/100)/10; routeMinutes=Math.round(route.duration/60);
+  $('km').value=routeKm.toFixed(1);
+  $('status').textContent=`تم تحديد المسافة تلقائيًا: ${routeKm.toLocaleString('ar-EG')} كم تقريبًا. المسار: ${a.label.split(',').slice(0,2).join(',')} ← ${b.label.split(',').slice(0,2).join(',')}`;
+ }catch(e){routeKm=null;routeMinutes=null;$('km').value='';$('status').textContent=e.message+' تأكد من الإنترنت وحاول كتابة العناوين بشكل أوضح.';}
+ finally{$('routeBtn').disabled=false;$('routeBtn').textContent='📍 احسب المسافة تلقائيًا';}
+});
+$('calc').addEventListener('click',()=>{
+ const km=Number($('km').value);
+ if(!km||km<=0){alert('احسب المسافة تلقائيًا أولًا بكتابة البداية والنهاية.');return;}
+ // Prototype-only fare assumptions; validate against current local fares before launch.
+ const base=12,perKm=5.5,traffic=Number($('traffic').value),ride=Number($('ride').value);
+ const estimated=Math.round((base+km*perKm)*traffic*ride);
+ const low=Math.max(10,Math.round(estimated*.85/5)*5),high=Math.round(estimated*1.2/5)*5;
+ $('price').textContent=estimated.toLocaleString('ar-EG')+' جنيه';
+ $('range').textContent='النطاق المتوقع: '+low.toLocaleString('ar-EG')+' – '+high.toLocaleString('ar-EG')+' جنيه';
+ $('distance').textContent='المسافة: '+km.toLocaleString('ar-EG')+' كم';
+ $('duration').textContent=routeMinutes?'زمن القيادة التقريبي: '+routeMinutes.toLocaleString('ar-EG')+' دقيقة':'الوقت يتغير حسب الزحام';
+ $('result').style.display='block';
+});
+</script>
+</body></html>
